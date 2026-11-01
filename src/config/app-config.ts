@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { LogLevel } from '../logging/logger.options.js';
 import {
   type AppEnv,
   type ClientCode,
@@ -40,6 +41,8 @@ export class AppConfig {
   /** Process roles from `ROLE` (default both). */
   readonly roles: ReadonlySet<ProcessRole>;
   readonly corsOrigins: string[];
+  /** `LOG_LEVEL`: fatal, error, warn, info (default), debug, trace, silent. */
+  readonly logLevel: LogLevel;
   readonly jwt: {
     issuer: string;
     publicKey?: string;
@@ -54,6 +57,7 @@ export class AppConfig {
     this.redisUrl = env.REDIS_URL;
     this.client = env.CLIENT;
     this.devAuth = env.DEV_AUTH;
+    this.logLevel = env.LOG_LEVEL;
     this.roles = new Set(env.ROLE);
     this.corsOrigins = env.CORS_ORIGINS.split(',')
       .map((origin) => origin.trim())

@@ -1,14 +1,17 @@
 import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { type DynamicModule, Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
+import { PinoLogger } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module.js';
 import { AppConfig } from './config/app-config.js';
 import { ConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { DiagnosticsModule } from './diagnostics/diagnostics.module.js';
 import { EventsModule } from './events/events.module.js';
 import { graphqlOptions } from './graphql/graphql.config.js';
 import { HealthModule } from './health/health.module.js';
 import { HeartbeatModule } from './heartbeat/heartbeat.module.js';
+import { LoggingModule } from './logging/logging.module.js';
 import { QueuesModule } from './queues/queues.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { ClientSettingsModule } from './settings/client-settings.module.js';
@@ -25,6 +28,7 @@ export class AppModule {
   static forRoles(config: Pick<AppConfig, 'isGateway' | 'isWorker'>): DynamicModule {
     const shared = [
       ConfigModule,
+      LoggingModule,
       DatabaseModule,
       RedisModule,
       EventsModule,
@@ -35,11 +39,12 @@ export class AppModule {
       ? [
           GraphQLModule.forRootAsync<ApolloDriverConfig>({
             driver: ApolloDriver,
-            inject: [AppConfig],
+            inject: [AppConfig, PinoLogger],
             useFactory: graphqlOptions,
           }),
           AuthModule,
           HealthModule,
+          DiagnosticsModule,
         ]
       : [];
     const features = [HeartbeatModule.forRoles({ worker: config.isWorker })];

@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { HEARTBEAT_QUEUE, type HeartbeatResult } from './heartbeat.constants.js';
 
 /**
@@ -9,11 +9,16 @@ import { HEARTBEAT_QUEUE, type HeartbeatResult } from './heartbeat.constants.js'
  */
 @Processor(HEARTBEAT_QUEUE)
 export class HeartbeatProcessor extends WorkerHost {
-  private readonly logger = new Logger(HeartbeatProcessor.name);
+  constructor(@InjectPinoLogger(HeartbeatProcessor.name) private readonly logger: PinoLogger) {
+    super();
+  }
 
   process(job: Job): Promise<HeartbeatResult> {
     const result: HeartbeatResult = { processedAt: new Date().toISOString(), pid: process.pid };
-    this.logger.log(`Heartbeat job ${job.id ?? '?'} processed by pid ${result.pid}`);
+    this.logger.info(
+      { jobId: job.id, pid: result.pid },
+      `Heartbeat job ${job.id ?? '?'} processed by pid ${result.pid}`,
+    );
     return Promise.resolve(result);
   }
 }

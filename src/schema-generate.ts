@@ -15,4 +15,4 @@ const app = await NestFactory.create(AppModule.forRoles({ isGateway: true, isWor
 });
 await app.init();
 await app.close();
-console.log('schema.graphql written');
+process.stdout.write('schema.graphql written\n');
