@@ -1,0 +1,40 @@
+import { Controller, Get, type INestApplication, Module } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../src/app.module.js';
+import type { AuthUser } from '../src/auth/auth-user.js';
+import { CurrentUser } from '../src/auth/current-user.decorator.js';
+import { AppConfig } from '../src/config/app-config.js';
+import { RequirePermission } from '../src/permissions/require-permission.decorator.js';
+
+/** HTTP-only test endpoints (kept out of the GraphQL schema on purpose). */
+@Controller('__test')
+class SeamsTestController {
+  @Get('whoami')
+  whoami(@CurrentUser() user: AuthUser): AuthUser {
+    return user;
+  }
+
+  @RequirePermission('bo:users:modify')
+  @Get('modify-users')
+  modifyUsers(): { ok: true } {
+    return { ok: true };
+  }
+}
+
+@Module({ controllers: [SeamsTestController] })
+class SeamsTestModule {}
+
+/** Boots the real AppModule (+ test endpoints) with optional env overrides. */
+export async function createApp(env: Record<string, string> = {}): Promise<INestApplication> {
+  // Gateway only by default, so e2e runs do not start background workers.
+  const config = AppConfig.fromEnv({ ...process.env, ROLE: 'GATEWAY', ...env });
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule.forRoles(config), SeamsTestModule],
+  })
+    .overrideProvider(AppConfig)
+    .useValue(config)
+    .compile();
+  const app = moduleRef.createNestApplication({ logger: ['error', 'warn'] });
+  await app.init();
+  return app;
+}
