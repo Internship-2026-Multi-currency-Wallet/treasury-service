@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type ClientCode, type Env, type ProcessRole, validateEnv } from './env.schema.js';
+import {
+  type AppEnv,
+  type ClientCode,
+  type Env,
+  type ProcessRole,
+  validateEnv,
+} from './env.schema.js';
 
 export const SERVICE_NAME = 'treasury-service';
 
@@ -22,6 +28,8 @@ export class AppConfig {
   readonly serviceName = SERVICE_NAME;
   readonly version: string;
   readonly nodeEnv: Env['NODE_ENV'];
+  /** Environment (`APP_ENV`): local, staging, kvitka-uat, wisla-uat. Prefix of all Redis keys. */
+  readonly appEnv: AppEnv;
   readonly port: number;
   readonly databaseUrl: string;
   readonly redisUrl: string;
@@ -40,6 +48,7 @@ export class AppConfig {
   constructor(env: Env) {
     this.version = env.APP_VERSION ?? readPackageVersion();
     this.nodeEnv = env.NODE_ENV;
+    this.appEnv = env.APP_ENV;
     this.port = env.PORT;
     this.databaseUrl = env.DATABASE_URL;
     this.redisUrl = env.REDIS_URL;

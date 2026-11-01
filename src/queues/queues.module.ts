@@ -18,6 +18,14 @@ export function bullConnection(redisUrl: string) {
 }
 
 /**
+ * BullMQ key prefix: the environment, so several environments can share one Redis
+ * (`staging:bull:heartbeat:*`, `kvitka-uat:bull:heartbeat:*`).
+ */
+export function bullPrefix(appEnv: string): string {
+  return `${appEnv}:bull`;
+}
+
+/**
  * BullMQ connection shared by all queues. Register queues in feature modules with
  * `BullModule.registerQueue({ name })`; put processors in modules loaded only for the WORKER role.
  */
@@ -25,7 +33,10 @@ export function bullConnection(redisUrl: string) {
   imports: [
     BullModule.forRootAsync({
       inject: [AppConfig],
-      useFactory: (config: AppConfig) => ({ connection: bullConnection(config.redisUrl) }),
+      useFactory: (config: AppConfig) => ({
+        connection: bullConnection(config.redisUrl),
+        prefix: bullPrefix(config.appEnv),
+      }),
     }),
   ],
 })

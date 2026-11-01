@@ -18,6 +18,8 @@ TypeScript 6, Node 26. Read `README.md` first.
 - **Process roles.** HTTP/GraphQL code belongs to the GATEWAY role, BullMQ processors to the WORKER role
   (`AppModule.forRoles`, `HeartbeatModule.forRoles` is the pattern). Processors must be idempotent.
   - Config: inject `AppConfig`; add new env vars to `env.schema.ts` **and** `.env.example`.
+- **Redis names** (channels, streams, queues) are always prefixed with `APP_ENV` — use the event helpers
+  (`eventChannel`, `eventStream`) and never hard-code a raw name.
 - **Database:** Knex via the `KNEX` token. Schema changes only through new timestamped migrations
   (`npm run migrate:make -- <name>`); never edit a merged migration. Migrations use `import type` only.
 - **Money:** integers in minor units; rates as decimal strings. Never floating point.

@@ -1,4 +1,4 @@
-import { bullConnection } from './queues.module.js';
+import { bullConnection, bullPrefix } from './queues.module.js';
 
 describe('bullConnection', () => {
   it('parses a plain URL', () => {
@@ -19,5 +19,12 @@ describe('bullConnection', () => {
       db: 2,
       tls: {},
     });
+  });
+});
+
+describe('bullPrefix', () => {
+  it('prefixes BullMQ keys with the environment', () => {
+    expect(bullPrefix('kvitka-uat')).toBe('kvitka-uat:bull');
+    expect(bullPrefix('staging')).not.toBe(bullPrefix('wisla-uat'));
   });
 });
