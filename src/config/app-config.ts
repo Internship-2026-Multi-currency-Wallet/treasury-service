@@ -36,8 +36,6 @@ export class AppConfig {
   readonly redisUrl: string;
   /** The client this deployment serves (`CLIENT` env). */
   readonly client: ClientCode;
-  /** `DEV_AUTH=true` enables the `Authorization: Dev <userId>:<permissions>` header. */
-  readonly devAuth: boolean;
   /** Process roles from `ROLE` (default both). */
   readonly roles: ReadonlySet<ProcessRole>;
   readonly corsOrigins: string[];
@@ -45,7 +43,7 @@ export class AppConfig {
   readonly logLevel: LogLevel;
   readonly jwt: {
     issuer: string;
-    publicKey?: string;
+    secret: string;
   };
 
   constructor(env: Env) {
@@ -56,7 +54,6 @@ export class AppConfig {
     this.databaseUrl = env.DATABASE_URL;
     this.redisUrl = env.REDIS_URL;
     this.client = env.CLIENT;
-    this.devAuth = env.DEV_AUTH;
     this.logLevel = env.LOG_LEVEL;
     this.roles = new Set(env.ROLE);
     this.corsOrigins = env.CORS_ORIGINS.split(',')
@@ -64,7 +61,7 @@ export class AppConfig {
       .filter(Boolean);
     this.jwt = {
       issuer: env.JWT_ISSUER,
-      publicKey: env.JWT_PUBLIC_KEY,
+      secret: env.JWT_SECRET,
     };
   }
 
