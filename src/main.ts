@@ -7,7 +7,7 @@ import { AppConfig } from './config/app-config.js';
 async function bootstrap(): Promise<void> {
   const config = AppConfig.fromEnv();
   const roles = [...config.roles].join(',');
-  const summary = `${config.serviceName} ${config.version} (roles=${roles}, client=${config.client}, devAuth=${config.devAuth})`;
+  const summary = `${config.serviceName} ${config.version} (roles=${roles}, client=${config.client})`;
 
   if (config.isGateway) {
     // Buffer Nest's own startup logs until the JSON logger is ready.
