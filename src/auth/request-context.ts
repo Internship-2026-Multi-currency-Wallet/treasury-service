@@ -17,7 +17,6 @@ export function getRequest(context: ExecutionContext): RequestLike {
   return context.switchToHttp().getRequest<RequestLike>();
 }
 
-/** Normalize graphql-ws credentials so subscriptions can reuse the HTTP authentication guards. */
 export function requestFromConnectionParams(
   params: Record<string, unknown> | undefined,
 ): RequestLike {
