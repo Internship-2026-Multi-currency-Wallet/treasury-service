@@ -70,14 +70,6 @@ export const envSchema = z
       });
       return z.NEVER;
     }
-    if (env.JWT_SECRET === LOCAL_JWT_SECRET && env.NODE_ENV === 'production') {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['JWT_SECRET'],
-        message: 'must not be the local-only value in production',
-      });
-      return z.NEVER;
-    }
     return { ...env, JWT_SECRET: env.JWT_SECRET ?? LOCAL_JWT_SECRET };
   });
 

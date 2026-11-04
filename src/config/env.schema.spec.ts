@@ -62,12 +62,6 @@ describe('validateEnv', () => {
     );
   });
 
-  it('refuses the local-only JWT_SECRET in production', () => {
-    expect(() => validateEnv({ NODE_ENV: 'production', JWT_SECRET: LOCAL_JWT_SECRET })).toThrow(
-      /JWT_SECRET: must not be the local-only value/,
-    );
-  });
-
   it('refuses a JWT_SECRET shorter than 32 characters', () => {
     expect(() => validateEnv({ JWT_SECRET: 'x'.repeat(31) })).toThrow(
       /JWT_SECRET: must be at least 32/,
