@@ -17,10 +17,7 @@ export function getRequest(context: ExecutionContext): RequestLike {
   return context.switchToHttp().getRequest<RequestLike>();
 }
 
-/**
- * Turns graphql-ws `connectionParams` into a request-like object, so the same guards work for
- * subscriptions. Clients send `{ Authorization: 'Dev 1:wallet' }` (any key casing).
- */
+/** Normalize graphql-ws credentials so subscriptions can reuse the HTTP authentication guards. */
 export function requestFromConnectionParams(
   params: Record<string, unknown> | undefined,
 ): RequestLike {

@@ -38,10 +38,7 @@ const rolesFromString = z
 export const APP_ENVS = ['local', 'staging', 'kvitka-uat', 'wisla-uat'] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
 
-/**
- * Fallback `JWT_SECRET` for local runs and tests, so the service starts without a `.env`.
- * Same placeholder as in `.env.example`; never used with `NODE_ENV=production`.
- */
+/** Local startup must work without provisioning a shared signing secret. */
 export const LOCAL_JWT_SECRET = 'local-only-jwt-secret-change-me-0123456789';
 
 /**
