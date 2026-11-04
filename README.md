@@ -29,7 +29,7 @@ npm run start:dev
 Without a `.env` the service still starts: every variable has a local default. That includes `JWT_SECRET`, which
 falls back to the **local-only learning secret** `local-only-jwt-secret-change-me-0123456789` (the same value as in
 `.env.example`). wallet-core must sign tokens with the same secret, or every request is 401. The fallback applies only
-when `NODE_ENV` is not `production`; in production `JWT_SECRET` is required and the service refuses to start without it.
+when `NODE_ENV` is not `production`; in production `JWT_SECRET` is required and the service refuses to start without it or with the local-only value.
 
 - GraphQL: <http://localhost:3002/graphql> (Apollo Sandbox in the browser)
 - Health: <http://localhost:3002/health>
