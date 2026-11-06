@@ -28,6 +28,7 @@ type Health {
 """The authenticated caller."""
 type Me {
   id: ID!
+  kind: UserKind!
 
   """Permission strings, e.g. "bo:users:modify"."""
   permissions: [String!]!
@@ -40,6 +41,14 @@ type Query {
   """Service health. Does not require authentication."""
   health: Health!
 
-  """The current user. Requires authentication."""
+  """
+  The current user (a client or a staff member). Requires authentication.
+  """
   me: Me!
+}
+
+"""CLIENT: a wallet user. STAFF: a back-office staff member."""
+enum UserKind {
+  CLIENT
+  STAFF
 }
