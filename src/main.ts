@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { AppConfig } from './config/app-config.js';
+import { useRequestMetrics } from './metrics/request-metrics.js';
 
 async function bootstrap(): Promise<void> {
   const config = AppConfig.fromEnv();
@@ -13,6 +14,7 @@ async function bootstrap(): Promise<void> {
     // Buffer Nest's own startup logs until the JSON logger is ready.
     const app = await NestFactory.create(AppModule.forRoles(config), { bufferLogs: true });
     app.useLogger(app.get(Logger));
+    useRequestMetrics(app);
     app.enableCors({ origin: config.corsOrigins, credentials: true });
     app.enableShutdownHooks();
     await app.listen(config.port);
