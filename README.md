@@ -180,15 +180,16 @@ handbook's `metrics.md`).
 - **Process roles**: `/metrics` runs with every `ROLE`, so a worker-only process is scraped too. Request and
   GraphQL metrics come from the gateway only.
 
-| Metric                          | Type      | Labels              | Meaning                                                                   |
-| ------------------------------- | --------- | ------------------- | ------------------------------------------------------------------------- |
-| `http_requests_total`           | counter   | `operation, status` | HTTP requests, except `/health`, `/metrics` and CORS preflights           |
-| `http_request_duration_seconds` | histogram | `operation`         | Request duration; buckets 5 ms … 10 s                                     |
-| `graphql_errors_total`          | counter   | `operation, code`   | Failed GraphQL requests by the error code the client sees (once per code) |
-| `graphql_ws_connections`        | gauge     | —                   | Open GraphQL websocket connections                                        |
-| `events_published_total`        | counter   | `type`              | Events published through `EventPublisher`                                 |
-| `events_consumed_total`         | counter   | `type`              | Events received through `EventSubscriber`, once per message               |
-| `process_*`, `nodejs_*`         | default   | —                   | CPU, memory, heap, event-loop lag, GC, start time (prom-client defaults)  |
+| Metric                          | Type      | Labels              | Meaning                                                                     |
+| ------------------------------- | --------- | ------------------- | --------------------------------------------------------------------------- |
+| `http_requests_total`           | counter   | `operation, status` | HTTP requests, except `/health`, `/metrics` and CORS preflights             |
+| `http_request_duration_seconds` | histogram | `operation`         | Request duration; buckets 5 ms … 10 s                                       |
+| `graphql_errors_total`          | counter   | `operation, code`   | Failed GraphQL requests by the error code the client sees (once per code)   |
+| `graphql_ws_connections`        | gauge     | —                   | Open GraphQL websocket connections                                          |
+| `events_published_total`        | counter   | `type`              | Events published through `EventPublisher`                                   |
+| `events_consumed_total`         | counter   | `type`              | Events received through `EventSubscriber`, once per message                 |
+| `events_failed_total`           | counter   | `type`              | Received events that failed to decode, or whose handler threw (per handler) |
+| `process_*`, `nodejs_*`         | default   | —                   | CPU, memory, heap, event-loop lag, GC, start time (prom-client defaults)    |
 
 - **`operation`**: the operation type and its first root field (`query me`), or the route of a REST request
   (`POST /diagnostics/ping`). The client's own operation name is not used, because any client can invent names and
