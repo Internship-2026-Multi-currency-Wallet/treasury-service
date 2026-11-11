@@ -1,8 +1,10 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger, PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { AppConfig } from './config/app-config.js';
+import { configureApp } from './configure-app.js';
 
 async function bootstrap(): Promise<void> {
   const config = AppConfig.fromEnv();
@@ -11,7 +13,10 @@ async function bootstrap(): Promise<void> {
 
   if (config.isGateway) {
     // Buffer Nest's own startup logs until the JSON logger is ready.
-    const app = await NestFactory.create(AppModule.forRoles(config), { bufferLogs: true });
+    const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoles(config), {
+      bufferLogs: true,
+    });
+    configureApp(app);
     app.useLogger(app.get(Logger));
     app.enableCors({ origin: config.corsOrigins, credentials: true });
     app.enableShutdownHooks();
