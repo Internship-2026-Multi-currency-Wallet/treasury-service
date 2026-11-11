@@ -5,6 +5,7 @@ import { Logger, PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { AppConfig } from './config/app-config.js';
 import { configureApp } from './configure-app.js';
+import { useRequestMetrics } from './metrics/request-metrics.js';
 
 async function bootstrap(): Promise<void> {
   const config = AppConfig.fromEnv();
@@ -18,6 +19,7 @@ async function bootstrap(): Promise<void> {
     });
     configureApp(app);
     app.useLogger(app.get(Logger));
+    useRequestMetrics(app);
     app.enableCors({ origin: config.corsOrigins, credentials: true });
     app.enableShutdownHooks();
     await app.listen(config.port);

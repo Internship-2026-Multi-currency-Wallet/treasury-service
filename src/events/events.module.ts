@@ -3,6 +3,7 @@ import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/comm
 import type { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
 import { AppConfig } from '../config/app-config.js';
+import { Metrics } from '../metrics/metrics.js';
 import { REDIS } from '../redis/redis.module.js';
 import { type EventContext, EventPublisher, EventSubscriber } from './event-bus.js';
 
@@ -35,21 +36,45 @@ export function loggingEventContext(logger: PinoLogger, service: string): EventC
   providers: [
     {
       provide: EventPublisher,
-      inject: [REDIS, AppConfig, PinoLogger],
-      useFactory: (redis: Redis, config: AppConfig, logger: PinoLogger) =>
-        new EventPublisher(redis, config.appEnv, loggingEventContext(logger, config.serviceName)),
+      inject: [REDIS, AppConfig, PinoLogger, Metrics],
+      useFactory: (redis: Redis, config: AppConfig, logger: PinoLogger, metrics: Metrics) => {
+        const published = metrics.counter({
+          name: 'events_published_total',
+          help: 'Events published, by event type',
+          labelNames: ['type'],
+        });
+        return new EventPublisher(
+          redis,
+          config.appEnv,
+          loggingEventContext(logger, config.serviceName),
+          (name) => published.inc({ type: name }),
+        );
+      },
     },
     {
       provide: EventSubscriber,
-      inject: [REDIS, AppConfig, PinoLogger],
-      useFactory: (redis: Redis, config: AppConfig, logger: PinoLogger) => {
+      inject: [REDIS, AppConfig, PinoLogger, Metrics],
+      useFactory: (redis: Redis, config: AppConfig, logger: PinoLogger, metrics: Metrics) => {
         logger.setContext('EventSubscriber');
+        const consumed = metrics.counter({
+          name: 'events_consumed_total',
+          help: 'Events received by this service, by event type',
+          labelNames: ['type'],
+        });
+        const failed = metrics.counter({
+          name: 'events_failed_total',
+          help: 'Received events that failed to decode or whose handler threw, by event type',
+          labelNames: ['type'],
+        });
         return new EventSubscriber(
           redis.duplicate(),
           config.appEnv,
-          (error, channel) =>
-            logger.error({ err: error, channel }, `Handler for "${channel}" failed`),
+          (error, channel, name) => {
+            failed.inc({ type: name });
+            logger.error({ err: error, channel }, `Handler for "${channel}" failed`);
+          },
           loggingEventContext(logger, config.serviceName),
+          (name) => consumed.inc({ type: name }),
         );
       },
     },
