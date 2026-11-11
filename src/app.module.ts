@@ -17,6 +17,7 @@ import { MetricsModule } from './metrics/metrics.module.js';
 import { QueuesModule } from './queues/queues.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { ClientSettingsModule } from './settings/client-settings.module.js';
+import { ThrottlingModule } from './throttling/throttling.module.js';
 
 /**
  * Root module, composed by process role (`ROLE` env):
@@ -46,6 +47,8 @@ export class AppModule {
             useFactory: graphqlOptions,
           }),
           AuthModule,
+          // After AuthModule: global guards run in module order, and the throttler needs req.user.
+          ThrottlingModule,
           HealthModule,
           DiagnosticsModule,
         ]
