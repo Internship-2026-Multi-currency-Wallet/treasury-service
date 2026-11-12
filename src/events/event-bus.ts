@@ -1,6 +1,5 @@
 /**
- * Thin typed helpers on top of ioredis for the events in `catalog.ts`, the contract shared by all
- * backend services.
+ * Keep `catalog.ts` identical across backend services to preserve the event contract.
  *
  * Every Redis name is prefixed with the environment (`APP_ENV`), e.g. `kvitka-uat:rate.tick`,
  * so several environments can share one Redis. Always go through these helpers (or
