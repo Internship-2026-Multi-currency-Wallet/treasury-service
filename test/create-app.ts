@@ -37,10 +37,7 @@ class SeamsTestController {
 @Module({ controllers: [SeamsTestController] })
 class SeamsTestModule {}
 
-/**
- * Boots the real AppModule (+ test endpoints) with optional env overrides. `queuePrefix` replaces
- * the BullMQ key prefix, so a scenario owns its queue keys.
- */
+/** Override the BullMQ prefix so each scenario owns its queue keys. */
 export async function createApp(
   env: Record<string, string> = {},
   { queuePrefix }: { queuePrefix?: string } = {},

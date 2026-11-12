@@ -57,7 +57,6 @@ export class RedisProxy {
     await new Promise<void>((resolve) => server.listen(this.port, '127.0.0.1', resolve));
   }
 
-  /** Keeps every connection open but never answers, like a Redis that hangs. */
   freeze(): void {
     this.frozen = true;
     for (const [client, upstream] of this.clients) {
@@ -70,7 +69,6 @@ export class RedisProxy {
     }
   }
 
-  /** Client connections the proxy still holds open. */
   get openClients(): number {
     return this.clients.size;
   }
