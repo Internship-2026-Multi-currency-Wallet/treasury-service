@@ -4,7 +4,8 @@ import type { Redis } from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
 import { AppConfig } from '../config/app-config.js';
 import { Metrics } from '../metrics/metrics.js';
-import { REDIS } from '../redis/redis.module.js';
+import { watchRedisConnection } from '../redis/redis-connection.js';
+import { createSubscriberRedis, REDIS } from '../redis/redis.module.js';
 import { type EventContext, EventPublisher, EventSubscriber } from './event-bus.js';
 
 /**
@@ -56,6 +57,8 @@ export function loggingEventContext(logger: PinoLogger, service: string): EventC
       inject: [REDIS, AppConfig, PinoLogger, Metrics],
       useFactory: (redis: Redis, config: AppConfig, logger: PinoLogger, metrics: Metrics) => {
         logger.setContext('EventSubscriber');
+        const connection = createSubscriberRedis(redis);
+        watchRedisConnection(connection, logger, 'subscriber');
         const consumed = metrics.counter({
           name: 'events_consumed_total',
           help: 'Events received by this service, by event type',
@@ -67,7 +70,7 @@ export function loggingEventContext(logger: PinoLogger, service: string): EventC
           labelNames: ['type'],
         });
         return new EventSubscriber(
-          redis.duplicate(),
+          connection,
           config.appEnv,
           (error, channel, name) => {
             failed.inc({ type: name });

@@ -4,7 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import type { EventMeta, SystemPingEvent } from '../src/events/catalog.js';
 import { EventSubscriber } from '../src/events/event-bus.js';
-import { createApp } from './create-app.js';
+import { createApp, redisReady } from './create-app.js';
 import { bearer } from './tokens.js';
 
 describe('request id and diagnostics (e2e)', () => {
@@ -14,6 +14,7 @@ describe('request id and diagnostics (e2e)', () => {
 
   beforeAll(async () => {
     app = await createApp({ APP_ENV: 'local' });
+    await redisReady(app);
     subscriber = new EventSubscriber(
       new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379'),
       'local',
@@ -21,8 +22,8 @@ describe('request id and diagnostics (e2e)', () => {
   });
 
   afterAll(async () => {
-    await subscriber.close();
-    await app.close();
+    await subscriber?.close();
+    await app?.close();
   });
 
   it('echoes an incoming x-request-id and generates one otherwise', async () => {

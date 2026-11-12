@@ -58,14 +58,30 @@ describe('FailOpenThrottlerStorage', () => {
     inner.increment.mockRejectedValue(new Error('connection reset'));
     await expect(increment()).resolves.toEqual(ALLOWED);
     expect(logger.warn).toHaveBeenCalledWith(
-      { redisStatus: 'ready', err: { name: 'Error', message: 'connection reset' } },
+      { redisStatus: 'ready', reason: 'Error' },
       'rate limiter unavailable, requests are not limited',
     );
   });
 
-  it('logs only the name and message of an error, not the command it carries', async () => {
+  it('logs a safe reason, not the address in a connection error message', async () => {
     const { inner, logger, increment } = setup('ready');
-    const err = Object.assign(new Error('READONLY'), {
+    inner.increment.mockRejectedValue(
+      Object.assign(new Error('connect ECONNREFUSED 10.20.30.40:6380'), { code: 'ECONNREFUSED' }),
+    );
+    await increment();
+    expect(logger.warn).toHaveBeenCalledWith(
+      { redisStatus: 'ready', reason: 'ECONNREFUSED' },
+      'rate limiter unavailable, requests are not limited',
+    );
+    const logged = JSON.stringify(logger.warn.mock.calls);
+    expect(logged).not.toContain('10.20.30.40');
+    expect(logged).not.toContain('6380');
+  });
+
+  it('logs a reply error by its code, not the command it carries', async () => {
+    const { inner, logger, increment } = setup('ready');
+    const err = Object.assign(new Error("READONLY You can't write against a read only replica."), {
+      name: 'ReplyError',
       command: {
         name: 'evalsha',
         args: ['local hits = redis.call', 'prod:throttle:treasury-service:ip:203.0.113.5'],
@@ -74,18 +90,18 @@ describe('FailOpenThrottlerStorage', () => {
     inner.increment.mockRejectedValue(err);
     await increment();
     expect(logger.warn).toHaveBeenCalledWith(
-      { redisStatus: 'ready', err: { name: 'Error', message: 'READONLY' } },
+      { redisStatus: 'ready', reason: 'READONLY' },
       'rate limiter unavailable, requests are not limited',
     );
     expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('203.0.113.5');
   });
 
-  it('logs a non-Error rejection as a string', async () => {
+  it('logs a non-Error rejection as unknown', async () => {
     const { inner, logger, increment } = setup('ready');
     inner.increment.mockRejectedValue('boom');
     await increment();
     expect(logger.warn).toHaveBeenCalledWith(
-      { redisStatus: 'ready', err: 'boom' },
+      { redisStatus: 'ready', reason: 'unknown' },
       'rate limiter unavailable, requests are not limited',
     );
   });
@@ -109,7 +125,7 @@ describe('FailOpenThrottlerStorage', () => {
       await expect(result).resolves.toEqual(ALLOWED);
       expect(logger.warn).toHaveBeenCalledTimes(1);
       expect(logger.warn).toHaveBeenCalledWith(
-        { redisStatus: 'ready', err: { name: 'Error', message: 'rate limit storage timeout' } },
+        { redisStatus: 'ready', reason: 'Error' },
         'rate limiter unavailable, requests are not limited',
       );
     });

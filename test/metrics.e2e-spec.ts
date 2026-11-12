@@ -8,7 +8,7 @@ import WebSocket from 'ws';
 import { eventChannel } from '../src/events/event-bus.js';
 import { MetricsServer } from '../src/metrics/metrics-server.js';
 import { REDIS } from '../src/redis/redis.module.js';
-import { createApp } from './create-app.js';
+import { createApp, redisReady } from './create-app.js';
 import { bearer } from './tokens.js';
 
 function valueOf(text: string, name: string, labels: Record<string, string>): number {
@@ -40,6 +40,7 @@ describe('metrics (e2e)', () => {
 
   beforeAll(async () => {
     app = await createApp({ APP_ENV: 'local' });
+    await redisReady(app);
     await app.listen(0);
     server = app.getHttpServer() as App;
     const { port } = (server as unknown as { address(): AddressInfo }).address();
@@ -48,7 +49,7 @@ describe('metrics (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('serves the Prometheus text format with service and env labels on the metrics port', async () => {

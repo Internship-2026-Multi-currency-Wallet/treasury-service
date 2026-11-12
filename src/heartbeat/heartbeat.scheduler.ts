@@ -1,7 +1,12 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  type OnApplicationBootstrap,
+  type OnApplicationShutdown,
+} from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { redisErrorReason } from '../redis/redis-connection.js';
 import {
   HEARTBEAT_EVERY_MS,
   HEARTBEAT_JOB,
@@ -14,18 +19,33 @@ import {
  * so several worker processes can call it at start-up without creating duplicates.
  */
 @Injectable()
-export class HeartbeatScheduler implements OnApplicationBootstrap {
+export class HeartbeatScheduler implements OnApplicationBootstrap, OnApplicationShutdown {
+  private closing = false;
+
   constructor(
     @InjectQueue(HEARTBEAT_QUEUE) private readonly queue: Queue,
     @InjectPinoLogger(HeartbeatScheduler.name) private readonly logger: PinoLogger,
   ) {}
 
-  async onApplicationBootstrap(): Promise<void> {
-    await this.queue.upsertJobScheduler(
-      HEARTBEAT_SCHEDULER_ID,
-      { every: HEARTBEAT_EVERY_MS },
-      { name: HEARTBEAT_JOB, data: {} },
-    );
-    this.logger.info(`Heartbeat scheduled every ${HEARTBEAT_EVERY_MS / 1000}s`);
+  /** Not awaited: BullMQ queues the command until Redis is reachable, which must not block startup. */
+  onApplicationBootstrap(): void {
+    this.queue
+      .upsertJobScheduler(
+        HEARTBEAT_SCHEDULER_ID,
+        { every: HEARTBEAT_EVERY_MS },
+        { name: HEARTBEAT_JOB, data: {} },
+      )
+      .then(
+        () => this.logger.info(`Heartbeat scheduled every ${HEARTBEAT_EVERY_MS / 1000}s`),
+        (err: unknown) => {
+          const fields = { reason: redisErrorReason(err) };
+          if (this.closing) this.logger.debug(fields, 'heartbeat scheduling cancelled');
+          else this.logger.warn(fields, 'heartbeat scheduling failed');
+        },
+      );
+  }
+
+  onApplicationShutdown(): void {
+    this.closing = true;
   }
 }
