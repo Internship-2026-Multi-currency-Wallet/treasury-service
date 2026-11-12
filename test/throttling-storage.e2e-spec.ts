@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
+import { closeRedis } from '../src/redis/redis-connection.js';
 import { createRedis } from '../src/redis/redis.module.js';
 import { WindowThrottlerStorage } from '../src/throttling/window-throttler-storage.js';
+import { waitForReady } from './create-app.js';
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -11,13 +13,15 @@ describe('WindowThrottlerStorage (e2e, real Redis)', () => {
   // A dedicated prefix keeps test counters away from a running local stack.
   const newKey = (): string => `e2e:throttle:${randomUUID()}`;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     redis = createRedis(process.env.REDIS_URL ?? 'redis://localhost:6379');
     storage = new WindowThrottlerStorage(redis);
+    // The command client has no offline queue: a command sent before it is ready fails at once.
+    await waitForReady(redis);
   });
 
   afterAll(async () => {
-    await redis.quit();
+    await closeRedis(redis);
   });
 
   it('counts hits in the window and blocks once the limit is exceeded', async () => {

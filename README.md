@@ -32,7 +32,8 @@ falls back to the **local-only learning secret** `local-only-jwt-secret-change-m
 when `NODE_ENV` is not `production`; in production `JWT_SECRET` is required and the service refuses to start without it.
 
 - GraphQL: <http://localhost:3002/graphql> (Apollo Sandbox in the browser)
-- Health: <http://localhost:3002/health>
+- Health: <http://localhost:3002/health> (Redis-only failure returns HTTP 200 `degraded`; database failure returns
+  HTTP 503)
 
 Need another service as well? Run it in Docker next to yours, e.g. `npm run infra -- up wallet-core`
 (several names allowed, `all` = the whole system). Containers reach this service at
@@ -122,6 +123,15 @@ BullMQ keys are prefixed with the environment too (`<APP_ENV>:bull:<queue>:…`,
 2. a processor (`@Processor(name)` extending `WorkerHost`) provided **only** when `worker` is true;
 3. unit tests for the processor logic and an e2e test against Redis (see `test/worker.e2e-spec.ts`).
 
+Startup must not wait for Redis, so do not await queue commands in lifecycle hooks. Give every queue and worker an
+`error` listener that logs `redisErrorReason(err)`, otherwise BullMQ prints the raw error.
+
+On application shutdown the heartbeat Worker is force-closed first, because its graceful close may wait indefinitely
+while Redis is down. An interrupted job may later be retried as stalled, so processors must stay idempotent. The rest
+of the application closes afterwards, including the queue's Redis client: `HeartbeatModule` owns it and closes it with
+a bounded QUIT. That client reconnects with ioredis's default backoff, which the Worker's blocking duplicate
+inherits, instead of BullMQ's previous default retry strategy.
+
 ```sh
 ROLE=WORKER npm run start:dev    # worker only
 ROLE=GATEWAY npm run start:dev   # API only
@@ -175,8 +185,8 @@ there (the mentor does it in Dokploy) and redeploy.
   exemption belongs with the real client of that service.
 - **Logging.** Only the first refused request of a caller in a window is logged (`request throttled`), so a flood of
   refused requests does not flood the logs.
-- **Redis down.** Requests pass without a limit and a warning is logged at most once a minute. The `X-RateLimit-*`
-  headers then show a full budget and mean nothing.
+- **Redis down or still connecting** (e.g. right after startup). Requests pass without a limit and a warning is
+  logged at most once a minute. The `X-RateLimit-*` headers then show a full budget and mean nothing.
 - An allowed response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds left);
   a refused one carries `Retry-After`.
 
@@ -348,6 +358,8 @@ To add a setting: declare it in `settings.schema.ts` and give it a default in `s
 The client customization module (hooks, client-only endpoints) is a separate task.
 
 ### Events — `src/events`
+
+An in-flight command may be resent after reconnect; a timeout does not prove non-delivery.
 
 `catalog.ts` is the typed contract for Redis events, **identical in all three backends**:
 

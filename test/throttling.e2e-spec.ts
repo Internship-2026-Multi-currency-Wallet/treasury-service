@@ -4,7 +4,7 @@ import type { Redis } from 'ioredis';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { REDIS } from '../src/redis/redis.module.js';
-import { createApp } from './create-app.js';
+import { createApp, redisReady } from './create-app.js';
 import { bearer } from './tokens.js';
 
 const LIMITS = {
@@ -48,10 +48,11 @@ describe('global rate limit (e2e)', () => {
 
   beforeAll(async () => {
     app = await createApp(LIMITS);
+    await redisReady(app);
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('counts anonymous requests per client IP', async () => {
@@ -181,7 +182,7 @@ describe('global rate limit when Redis is unavailable (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('lets requests through instead of failing them', async () => {

@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { createApp } from './create-app.js';
+import { createApp, redisReady } from './create-app.js';
 import { bearer, TEST_USER_ID } from './tokens.js';
 
 const gql = (app: INestApplication, query: string, authorization?: string) => {
@@ -15,10 +15,11 @@ describe('treasury-service (e2e)', () => {
 
   beforeAll(async () => {
     app = await createApp({ CLIENT: 'demo' });
+    await redisReady(app);
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('GET /health reports service, client and dependencies', async () => {
