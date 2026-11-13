@@ -1,6 +1,7 @@
 import { GraphQLModule } from '@nestjs/graphql';
 import { AuthModule } from './auth/auth.module.js';
 import { AppModule } from './app.module.js';
+import { GraphqlErrorsModule } from './graphql/graphql-errors.module.js';
 import { HeartbeatProcessor } from './heartbeat/heartbeat.processor.js';
 import { HealthModule } from './health/health.module.js';
 import { ThrottlingModule } from './throttling/throttling.module.js';
@@ -16,7 +17,9 @@ describe('AppModule.forRoles', () => {
   it('GATEWAY serves GraphQL and HTTP but runs no processors', () => {
     const list = imports(true, false);
     expect(hasGraphQL(list)).toBe(true);
-    expect(list).toEqual(expect.arrayContaining([AuthModule, HealthModule, ThrottlingModule]));
+    expect(list).toEqual(
+      expect.arrayContaining([AuthModule, GraphqlErrorsModule, HealthModule, ThrottlingModule]),
+    );
     expect(heartbeatProviders(list)).not.toContain(HeartbeatProcessor);
   });
 
@@ -25,6 +28,7 @@ describe('AppModule.forRoles', () => {
     expect(hasGraphQL(list)).toBe(false);
     expect(list).not.toContain(AuthModule);
     expect(list).not.toContain(ThrottlingModule);
+    expect(list).not.toContain(GraphqlErrorsModule);
     expect(heartbeatProviders(list)).toContain(HeartbeatProcessor);
   });
 
