@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { DiagnosticsModule } from './diagnostics/diagnostics.module.js';
 import { EventsModule } from './events/events.module.js';
 import { graphqlOptions } from './graphql/graphql.config.js';
+import { GraphqlErrorsModule } from './graphql/graphql-errors.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HeartbeatModule } from './heartbeat/heartbeat.module.js';
 import { LoggingModule } from './logging/logging.module.js';
@@ -46,6 +47,7 @@ export class AppModule {
             inject: [AppConfig, PinoLogger, Metrics],
             useFactory: graphqlOptions,
           }),
+          GraphqlErrorsModule,
           AuthModule,
           // After AuthModule: global guards run in module order, and the throttler needs req.user.
           ThrottlingModule,
