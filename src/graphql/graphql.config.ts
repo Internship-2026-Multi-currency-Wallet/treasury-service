@@ -48,7 +48,6 @@ export interface GraphqlContext {
   req: RequestLike;
   /** Absent over websocket. */
   res?: Response;
-  /** Websocket only: the connection's requestId, bound to the operation's logs. */
   requestId?: string;
 }
 
