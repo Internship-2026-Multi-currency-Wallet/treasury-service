@@ -146,8 +146,6 @@ export function graphqlOptions(
     plugins: [graphqlLoggingPlugin(), ...(metrics ? [graphqlMetricsPlugin(metrics)] : [])],
     // Unexpected errors reach the client as a bare INTERNAL_SERVER_ERROR (no internals).
     formatError,
-    // HTTP requests carry headers; graphql-ws supplies connectionParams and extra instead.
-    // Both end up as `context.req.headers`, which the auth guard reads.
     context: ({ req, res, connectionParams, extra }: ContextInput): GraphqlContext =>
       req
         ? { req, res }
