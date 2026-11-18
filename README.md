@@ -187,7 +187,9 @@ there (the mentor does it in Dokploy) and redeploy.
   everything that arrives over the WebSocket (this service has no subscriptions yet). The GraphQL query `health` is counted like any other query.
   There is no `/metrics` endpoint in this service.
 - **Known limits (follow-ups):** REST requests refused by `AuthGuard` (401) or `PermissionGuard` (403) are not counted,
-  because the REST guard runs only after them. Server-to-server calls are
+  because the REST guard runs only after them. Bodies that Express refuses before the middleware (invalid JSON: 400,
+  over 100 kb: 413) are not counted either; they never reach GraphQL. There is no complexity limit: within the token
+  limit a document can still ask for a few hundred aliased fields. Server-to-server calls are
   not exempt: no service calls this one today (the back-office calls it with staff tokens, counted as `staff:<id>`),
   but if one starts, its calls are counted like any other caller's (`ip:<service IP>` without a token). An
   exemption belongs with the real client of that service.
@@ -212,6 +214,9 @@ A GraphQL document is checked before it runs, so a huge or deeply nested one cos
   `Query depth 16 exceeds the limit of 15`.
 
 Both are counted by the rate limit like any other request.
+
+The same limits apply over the WebSocket: a document over the token or depth limit fails that operation (the
+connection stays open), and a message over 100 kb closes the connection with code 1009.
 
 ### Error format (the contract for frontends)
 
