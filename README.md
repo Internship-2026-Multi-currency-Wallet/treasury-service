@@ -76,6 +76,53 @@ curl -s localhost:3002/graphql -H 'content-type: application/json' \
 | `npm run migrate:make -- <name>`              | Create `migrations/<timestamp>_<name>.ts`                             |
 | `npm run migrate:rollback` / `migrate:status` | Roll back the last batch / list migrations                            |
 
+## CI
+
+Every pull request and every push to `main` or `client/**` runs `.github/workflows/ci.yml`: one job, `checks`, with
+MySQL 8.4 and Redis 8 as service containers and a 10-minute limit. It runs the commands below in this order; a
+failing step makes the check red.
+
+`npm run migrate` changes the database it points to; `npm run test:e2e` writes Redis keys (BullMQ queues and
+schedulers, rate-limit counters, events) and runs a WORKER that takes jobs from the `<APP_ENV>:bull:` queues. Never
+point them at production, staging or UAT, and never drop or clear a database or Redis that another worktree or person
+uses.
+
+To run the same steps locally, start your own throwaway MySQL and Redis containers on ports you have checked are
+free, and set both URLs explicitly in the shell: values inherited from an earlier `export`, direnv or a sourced
+`.env` may point elsewhere. The shared `ops` stack (`npm run infra:up`) is one MySQL and one Redis for every checkout
+on your machine; use it only when nothing else is using it and you accept that the tests change its data.
+
+The block below stops at the first failure (a busy port, a container that is not ready, a failing check) and always
+stops the two containers it started, and only those: it tracks them by ID, not by name.
+
+```bash
+nvm use
+(
+  set -euo pipefail
+  mysql='' redis=''
+  trap 'for id in $mysql $redis; do docker stop "$id" >/dev/null; done' EXIT
+  # `docker run` prints an ID even when it fails, so keep it only after success.
+  id=$(docker run -d --rm -p 127.0.0.1:33306:3306 -e MYSQL_ROOT_PASSWORD=root \
+    -e MYSQL_DATABASE=treasury_service -e MYSQL_USER=wallet -e MYSQL_PASSWORD=wallet mysql:8.4)
+  mysql=$id
+  id=$(docker run -d --rm -p 127.0.0.1:36379:6379 redis:8-alpine)
+  redis=$id
+  ready() { for _ in $(seq 60); do "$@" >/dev/null 2>&1 && return; sleep 2; done; echo "not ready: $*" >&2; return 1; }
+  ready docker exec "$mysql" mysqladmin ping -h 127.0.0.1 -u root -proot --silent
+  ready docker exec "$redis" redis-cli ping
+  export DATABASE_URL=mysql://wallet:wallet@127.0.0.1:33306/treasury_service
+  export REDIS_URL=redis://127.0.0.1:36379
+  npm ci
+  npm run format:check
+  npm run lint
+  npm run typecheck
+  npm test
+  npm run migrate
+  npm run test:e2e
+  npm run build
+)
+```
+
 ## Environment variables
 
 Validated at startup (`src/config/env.schema.ts`); an invalid value stops the service with a clear message.

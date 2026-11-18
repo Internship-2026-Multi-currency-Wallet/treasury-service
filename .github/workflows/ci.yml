@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'client/**']
+
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # 127.0.0.1, not localhost: Node may resolve localhost to ::1 first.
+  # Keep MYSQL_DATABASE synchronized with the database name in DATABASE_URL.
+  DATABASE_URL: mysql://wallet:wallet@127.0.0.1:3306/treasury_service
+  REDIS_URL: redis://127.0.0.1:6379
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: treasury_service
+          MYSQL_USER: wallet
+          MYSQL_PASSWORD: wallet
+        ports:
+          - 3306:3306
+        # TCP ping: the temporary server of first-start initialization has no networking.
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -proot --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 20s
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run migrate
+      - run: npm run test:e2e
+      - run: npm run build
