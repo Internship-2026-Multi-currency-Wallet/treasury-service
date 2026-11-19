@@ -78,50 +78,36 @@ curl -s localhost:3002/graphql -H 'content-type: application/json' \
 
 ## CI
 
-Every pull request and every push to `main` or `client/**` runs `.github/workflows/ci.yml`: one job, `checks`, with
-MySQL 8.4 and Redis 8 as service containers and a 10-minute limit. It runs the commands below in this order; a
-failing step makes the check red.
+Every pull request and every push to `main` or `client/**` runs `.github/workflows/ci.yml`: one job, `checks`,
+with MySQL 8.4 and Redis 8 as service containers and a 10-minute limit. A failing step makes the check red.
 
-`npm run migrate` changes the database it points to; `npm run test:e2e` writes Redis keys (BullMQ queues and
-schedulers, rate-limit counters, events) and runs a WORKER that takes jobs from the `<APP_ENV>:bull:` queues. Never
-point them at production, staging or UAT, and never drop or clear a database or Redis that another worktree or person
-uses.
+To run the same steps locally: `npm run migrate` changes the schema of the database it points to, and
+`npm run test:e2e` writes data and Redis keys and streams (including the Redis outage suite). Never point them at
+production, staging, UAT or a database or Redis that another worktree or person is using at the same time. The
+`ops` stack is one MySQL and one Redis for every checkout on your machine, so stop other e2e runs first. Set both
+URLs explicitly in the shell: values inherited from your shell (an earlier `export`, direnv, a sourced `.env`) may
+point elsewhere.
 
-To run the same steps locally, start your own throwaway MySQL and Redis containers on ports you have checked are
-free, and set both URLs explicitly in the shell: values inherited from an earlier `export`, direnv or a sourced
-`.env` may point elsewhere. The shared `ops` stack (`npm run infra:up`) is one MySQL and one Redis for every checkout
-on your machine; use it only when nothing else is using it and you accept that the tests change its data.
+Treasury e2e tests also run a BullMQ WORKER consuming jobs from `<APP_ENV>:bull:` queues.
 
-The block below stops at the first failure (a busy port, a container that is not ready, a failing check) and always
-stops the two containers it started, and only those: it tracks them by ID, not by name.
+1. Start the infrastructure and print its values:
 
-```bash
-nvm use
-(
-  set -euo pipefail
-  mysql='' redis=''
-  trap 'for id in $mysql $redis; do docker stop "$id" >/dev/null; done' EXIT
-  # `docker run` prints an ID even when it fails, so keep it only after success.
-  id=$(docker run -d --rm -p 127.0.0.1:33306:3306 -e MYSQL_ROOT_PASSWORD=root \
-    -e MYSQL_DATABASE=treasury_service -e MYSQL_USER=wallet -e MYSQL_PASSWORD=wallet mysql:8.4)
-  mysql=$id
-  id=$(docker run -d --rm -p 127.0.0.1:36379:6379 redis:8-alpine)
-  redis=$id
-  ready() { for _ in $(seq 60); do "$@" >/dev/null 2>&1 && return; sleep 2; done; echo "not ready: $*" >&2; return 1; }
-  ready docker exec "$mysql" mysqladmin ping -h 127.0.0.1 -u root -proot --silent
-  ready docker exec "$redis" redis-cli ping
-  export DATABASE_URL=mysql://wallet:wallet@127.0.0.1:33306/treasury_service
-  export REDIS_URL=redis://127.0.0.1:36379
-  npm ci
-  npm run format:check
-  npm run lint
-  npm run typecheck
-  npm test
-  npm run migrate
-  npm run test:e2e
-  npm run build
-)
-```
+   ```sh
+   npm run infra:up && npm run infra -- info
+   ```
+
+   Continue only if both commands succeeded and `info` lists `mysql` and `redis` as running in `docker`.
+
+2. Take the MySQL user, password, port and database from the `treasury-service DATABASE_URL` line of `info`, and the
+   Redis port from its `REDIS_URL` line — do not assume the default ports. Set both URLs in the same shell, then
+   run the checks:
+
+   ```sh
+   export DATABASE_URL='mysql://<user>:<password>@127.0.0.1:<mysql-port>/<database>'
+   export REDIS_URL='redis://127.0.0.1:<redis-port>'
+   nvm use && npm ci && npm run format:check && npm run lint && npm run typecheck && npm test \
+     && npm run migrate && npm run test:e2e && npm run build
+   ```
 
 ## Environment variables
 
